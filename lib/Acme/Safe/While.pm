@@ -2,14 +2,18 @@ package Acme::Safe::While;
 use strict;
 use warnings;
 use Filter::Util::Call;
+use base qw(Class::Data::Inheritable);
 
-our $i;
+__PACKAGE__->mk_classdata(default_loop_max => 1000);
+
+our @i;
 
 sub import {
     my $class = shift;
-    my $max = shift || 1000;
+    my $max = shift || $class->default_loop_max;
 
     my $done = 0;
+    my $i = 0;
     filter_add(
         sub {
             return 0 if $done;
@@ -23,7 +27,7 @@ sub import {
                 $data .= $_;
                 $_ = '';
             }
-            $data =~ s/(while.*?{)/\$$class\::i = 0; $1 last if \$$class\::i++ > $max;/gs;
+            $data =~ s/([{;}])([^;]*?\bwhile\s*\(?)/"$1\n\$$class\::i[@{[$i]}] = 0; $2(\$$class\::i[@{[$i++]}]++ < $max) && "/gse;
             $_ = $data . $end;
             ++$done;
         }
